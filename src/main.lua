@@ -44,15 +44,16 @@ shared.info('Everything mandatory is now imported. Beginning...')
 local isoCodes = shared.import('modules/isoCodes.lua')
 shared.info('Currently supported isoCodes:', shared.HttpService:JSONEncode(shared.isoCodes))
 
-shared.currentISOin = 'pt'
+-- Фикс перевода: с русского на португальский
+shared.currentISOin = 'ru'
 shared.translateIn = true
-shared.currentISOout = 'ru'
+shared.currentISOout = 'pt'
 shared.translateOut = true
 
 local Translator = shared.import('modules/Translator.lua')
 shared.Translator = Translator
 
-local TestRequest = shared.Translator:Translate('Hallo', shared.currentISOout)
+local TestRequest = shared.Translator:Translate('Привет', shared.currentISOout)
 if TestRequest == 'error' then 
     error('Translation does not seem to work right now!')
 end
@@ -79,19 +80,12 @@ function hookmetamethod(obj, met, func)
     setreadonly(getrawmetatable(game), true)
 end
 
-local function handleTranslation(msg, isLocalPlayer)
-    
-    if isLocalPlayer then
-        shared.currentISOin = 'ru'
-        shared.currentISOout = 'pt'
-    else
-        
-        shared.currentISOin = 'en'
-        shared.currentISOout = 'ru'
-    end
+local function handleTranslation(msg)
+    shared.info('Переводим текст:', msg)
     
     local result = ChatHandler:Handle(msg)
-    shared.info('Got result from ChatHandler:', result)
+    shared.info('Результат перевода:', result)
+
     if result ~= nil and next(result) ~= nil then
         return result[1]
     end
@@ -101,8 +95,8 @@ end
 if shared.Players.LocalPlayer.PlayerGui:FindFirstChild('Chat') then 
     local events = shared.ReplicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
     local sayMessageRequest = events:FindFirstChild('SayMessageRequest') 
-    assert(events, 'Chat events were not found!')
-    assert(sayMessageRequest, 'Chat events were not found!')
+    assert(events, 'Chat events were не найдены!')
+    assert(sayMessageRequest, 'Chat events were не найдены!')
 
     shared.info('Game is using old chat method...')
 
@@ -116,33 +110,34 @@ if shared.Players.LocalPlayer.PlayerGui:FindFirstChild('Chat') then
         if data == nil then return end
         if data.FromSpeaker == shared.Players.LocalPlayer.Name then return end 
 
-        shared.info('Intercepted message:', data.Message, ' | ', data.FromSpeaker)
+        shared.info('Перехвачено сообщение:', data.Message, ' | ', data.FromSpeaker)
 
         local msg = data.Message
 
+        -- Команды смены языка
         if msg:sub(1, 3) == '>ru' then
             shared.currentISOin = 'ru'
-            shared.currentISOout = 'ru'
-            shared.info('Language set to Russian.')
+            shared.currentISOout = 'pt'
+            shared.info('Язык перевода установлен: RU -> PT')
             return
-        elseif msg:sub(1, 3) == '>en' then
-            shared.currentISOin = 'en'
-            shared.currentISOout = 'en'
-            shared.info('Language set to English.')
+        elseif msg:sub(1, 3) == '>pt' then
+            shared.currentISOin = 'pt'
+            shared.currentISOout = 'ru'
+            shared.info('Язык перевода установлен: PT -> RU')
             return
         end
 
-        local result = handleTranslation(msg, false)
+        local result = handleTranslation(msg)
 
         if result ~= nil then
-            ChatHandler.ChatNotify(`[Translation] {result}`)
+            ChatHandler.ChatNotify(`[Перевод] {result}`)
         end
     end)
 
     hookmetamethod(sayMessageRequest, "FireServer", function(msg, to)
-        shared.info('Intercepted message:', msg, ' | ', to)
+        shared.info('Перехвачено сообщение перед отправкой:', msg, ' | ', to)
         shared.pending = true
-        local result = handleTranslation(msg, true)
+        local result = handleTranslation(msg)
         if result ~= nil then
             sayMsg(result, to)
         end
@@ -161,7 +156,7 @@ else
 
         if msg.Text == '' then return end
 
-        shared.info('Intercepted message:', msg.Text, ' | ', tostring(msg.TextSource))
+        shared.info('Перехвачено сообщение:', msg.Text, ' | ', tostring(msg.TextSource))
 
         local md = ChatHandler.TextPrefixfromColor3(ChatHandler.getColorfromHash(tostring(msg.TextSource)))
         msg.PrefixText = `<font color="{md}">{tostring(msg.TextSource)}:</font>`
@@ -169,20 +164,20 @@ else
         local isSelf = tostring(msg.TextSource) == shared.Players.LocalPlayer.Name
 
         if isSelf then 
-            local result = handleTranslation(msg.Text, true)
-            shared.info('Got result from ChatHandler:', result)
+            local result = handleTranslation(msg.Text)
+            shared.info('Результат перевода:', result)
             if result ~= nil and next(result) ~= nil then
                 msg.Text = result
             else
                 msg.Text = ''
             end
         else
-            local result = handleTranslation(msg.Text, false)
-            shared.info('Got result from ChatHandler:', result)
+            local result = handleTranslation(msg.Text)
+            shared.info('Результат перевода:', result)
             if result ~= nil and next(result) ~= nil then
                 local text = result
                 task.delay(0.5, function()
-                    main_channel:DisplaySystemMessage(`[Translation] {text}`, 'system')
+                    main_channel:DisplaySystemMessage(`[Перевод] {text}`, 'system')
                 end)
             end
         end
@@ -192,5 +187,5 @@ end
 
 shared.StarterGui:SetCore('SendNotification',{
     Title = 'Chat-Translator', 
-    Text = 'The Translator is initiated and running!', 
+    Text = 'Переводчик запущен и работает! (RU -> PT)', 
 })
