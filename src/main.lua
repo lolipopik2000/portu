@@ -82,8 +82,8 @@ end
 local function handleTranslation(msg, isLocalPlayer)
     
     if isLocalPlayer then
-        shared.currentISOin = 'pt'
-        shared.currentISOout = 'en'
+        shared.currentISOin = 'ru'
+        shared.currentISOout = 'pt'
     else
         
         shared.currentISOin = 'en'
